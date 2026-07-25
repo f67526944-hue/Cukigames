@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Parkour Game</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #222;
+    touch-action: manipulation;
+  }
+  canvas {
+    display: block;
+    background: linear-gradient(#87CEEB, #ffffff);
+    width: 100vw;
+    height: 100vh;
+  }
+  #score {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    font-size: 20px;
+    text-shadow: 1px 1px 2px #000;
+  }
+  #gameover {
+    position: absolute;
+    top: 40%;
+    width: 100%;
+    text-align: center;
+    color: red;
+    font-size: 32px;
+    font-family: Arial, sans-serif;
+    display: none;
+  }
+  #restartBtn {
+    position: absolute;
+    top: 55%;
+    left: 50%;
+    transform: translate(-50%, 0);
+    padding: 10px 20px;
+    font-size: 18px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="score">Skor: 0</div>
+<div id="gameover">GAME OVER</div>
+<button id="restartBtn" onclick="restartGame()">Main Lagi</button>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+let groundY, player, obstacles, score, gameSpeed, isGameOver, frame;
+
+function initGame() {
+  groundY = canvas.height * 0.8;
+  player = {
+    x: canvas.width * 0.15,
+    y: groundY - 50,
+    width: 40,
+    height: 50,
+    vy: 0,
+    gravity: 1.2,
+    jumpPower: -18,
+    grounded: true,
+    jumpCount: 0,
+    maxJump: 2 // double jump
+  };
+  obstacles = [];
+  score = 0;
+  gameSpeed = 6;
+  isGameOver = false;
+  frame = 0;
+  document.getElementById("gameover").style.display = "none";
+  document.getElementById("restartBtn").style.display = "none";
+}
+
+function spawnObstacle() {
+  const height = 30 + Math.random() * 40;
+  obstacles.push({
+    x: canvas.width + 20,
+    y: groundY - height,
+    width: 30,
+    height: height
+  });
+}
+
+function update() {
+  if (isGameOver) return;
+
+  frame++;
+  score += 1;
+
+  // gravity & jump
+  player.vy += player.gravity;
+  player.y += player.vy;
+
+  if (player.y + player.height >= groundY) {
+    player.y = groundY - player.height;
+    player.vy = 0;
+    player.grounded = true;
+    player.jumpCount = 0;
+  }
+
+  // spawn obstacles
+  if (frame % Math.max(60 - Math.floor(score/100), 30) === 0) {
+    spawnObstacle();
+  }
+
+  // move obstacles
+  obstacles.forEach(o => o.x -= gameSpeed);
+  obstacles = obstacles.filter(o => o.x + o.width > 0);
+
+  // collision detection
+  for (let o of obstacles) {
+    if (
+      player.x < o.x + o.width &&
+      player.x + player.width > o.x &&
+      player.y < o.y + o.height &&
+      player.y + player.height > o.y
+    ) {
+      endGame();
+    }
+  }
+
+  // increase difficulty
+  if (score % 500 === 0) gameSpeed += 0.5;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // ground
+  ctx.fillStyle = "#4a7c2f";
+  ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+  // player
+  ctx.fillStyle = "#ff5733";
+  ctx.fillRect(player.x, player.y, player.width, player.height);
+
+  // obstacles
+  ctx.fillStyle = "#333";
+  obstacles.forEach(o => {
+    ctx.fillRect(o.x, o.y, o.width, o.height);
+  });
+
+  document.getElementById("score").innerText = "Skor: " + score;
+}
+
+function loop() {
+  update();
+  draw();
+  if (!isGameOver) requestAnimationFrame(loop);
+}
+
+function jump() {
+  if (isGameOver) return;
+  if (player.jumpCount < player.maxJump) {
+    player.vy = player.jumpPower;
+    player.jumpCount++;
+  }
+}
+
+function endGame() {
+  isGameOver = true;
+  document.getElementById("gameover").style.display = "block";
+  document.getElementById("restartBtn").style.display = "block";
+}
+
+function restartGame() {
+  initGame();
+  loop();
+}
+
+// Touch & click controls
+canvas.addEventListener("touchstart", jump);
+canvas.addEventListener("mousedown", jump);
+
+initGame();
+loop();
+</script>
+
+</body>
+</html>
